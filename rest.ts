@@ -379,6 +379,18 @@ export async function handleRest(req: IncomingMessage, res: ServerResponse, ctx:
     return;
   }
 
+  // GET /git/refs/heads/{branch} — read one branch ref (used by the MCP setup).
+  if (restPath.startsWith('git/refs/heads/') && method === 'GET') {
+    const branch = decodeURIComponent(restPath.slice('git/refs/heads/'.length));
+    const sha = repo.refs.get(`refs/heads/${branch}`);
+    if (sha === undefined) {
+      sendError(res, 404, 'Not Found', ctx);
+      return;
+    }
+    sendJson(res, 200, { ref: `refs/heads/${branch}`, object: { sha, type: 'commit' } }, ctx);
+    return;
+  }
+
   // GET /branches.
   if (restPath === 'branches' && method === 'GET') {
     const branches = [...repo.refs.entries()]
@@ -386,6 +398,18 @@ export async function handleRest(req: IncomingMessage, res: ServerResponse, ctx:
       .map(([name, oid]) => ({ name: name.slice('refs/heads/'.length), commit: { sha: oid } }))
       .sort((a, b) => (a.name < b.name ? -1 : 1));
     sendJson(res, 200, branches, ctx);
+    return;
+  }
+
+  // GET /branches/{branch} — read one branch (used by the MCP setup).
+  if (restPath.startsWith('branches/') && method === 'GET') {
+    const branch = decodeURIComponent(restPath.slice('branches/'.length));
+    const sha = repo.refs.get(`refs/heads/${branch}`);
+    if (sha === undefined) {
+      sendError(res, 404, 'Not Found', ctx);
+      return;
+    }
+    sendJson(res, 200, { name: branch, commit: { sha } }, ctx);
     return;
   }
 
